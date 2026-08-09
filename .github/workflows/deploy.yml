@@ -1,0 +1,46 @@
+name: Main Deployment
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
+  AWS_REGION: us-east-1
+  DEFAULT_AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    name: Deploy to QA and Prod
+    if: "${{ !startsWith(github.event.head_commit.message, 'doc: ') }}"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+      - name: Install Python dependencies
+        run: pip install pipenv && pipenv install --dev
+      - name: Install Node dependencies
+        run: npm install -g serverless
+    #   - name: Run unit tests
+    #     run: pipenv run test_unit
+      - name: Deploy QA East
+        run: serverless deploy --stage qa --region us-east-1
+      - name: Deploy QA West
+        run: serverless deploy --stage qa --region us-west-2
+    #   - name: Run integration tests
+    #     run: pipenv run test_integration
+      - name: Deploy Prod East
+        run: serverless deploy --stage prod --region us-east-1
+      - name: Deploy Prod West
+        run: serverless deploy --stage prod --region us-west-2

@@ -1,0 +1,72 @@
+org: ryanlawson2
+app: thing
+service: thing-service
+
+provider:
+  name: aws
+  logs:
+    restApi: true
+  runtime: python3.14
+  deploymentBucket:
+    name: ${self:custom.deploymentBucketName.${opt:region, 'us-east-1'}}
+    serverSideEncryption: AES256
+  environment:
+    ENVIRONMENT: ${opt:stage, 'qa'}
+    SNS_TOPIC_ARN: arn:aws:sns:us-east-1:526958954631:thing-service-alerts
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - arn:aws:dynamodb:${opt:region, 'us-east-1'}:526958954631:table/Things
+        - Effect: Allow
+          Action:
+            - sns:Publish
+          Resource:
+            - arn:aws:sns:us-east-1:526958954631:thing-service-alerts
+
+custom:
+  deploymentBucketName:
+    us-east-1: ryanlawson-deploy-us-east-1
+    us-west-2: ryanlawson-deploy-us-west-2
+  pythonRequirements:
+    usePipenv: true
+
+functions:
+  ThingService:
+    handler: src.handler.handler
+    events:
+      - http:
+          method: GET
+          path: /health
+          operationId: HealthCheck
+      - http:
+          method: POST
+          path: /register
+          operationId: UserRegister
+      - http:
+          method: POST
+          path: /things
+          operationId: ThingCreate
+      - http:
+          method: GET
+          path: /things
+          operationId: ThingQuery
+      - http:
+          method: GET
+          path: /things/{thingId}
+          operationId: ThingGet
+      - http:
+          method: PATCH
+          path: /things/{thingId}
+          operationId: ThingModify
+      - http:
+          method: DELETE
+          path: /things/{thingId}
+          operationId: ThingDelete
